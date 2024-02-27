@@ -31,6 +31,10 @@
 		{
 			"Name": "ProceduralMeshComponent",
 			"Enabled": true
+		},
+		{
+			"Name": "UnrealYAML",
+			"Enabled": true
 		}
 	]
 }

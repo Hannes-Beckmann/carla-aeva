@@ -1,0 +1,21 @@
+# Number of simulatenous scanning lasers, henceforth called beams.
+# Note this is different to number of channels (simultaneous raycasts per beam).
+num_beams: 4
+
+# Specifies the starting elevation offset of each beam.
+# Each beam horizontally scans different regions in elevation. 
+beam_elevation_offsets_deg: [0.5729578, -1.718873, 1.718873, -0.5729578]
+
+# List of available scan patterns.
+patterns:
+  # This scan pattern has a uniform distribution of 64 total lines and 19.2 degrees of vertical FoV.
+  64-19.2-Uniform:
+    # The angular resolution is determined by the horizontal FoV and points per line.
+    # In this case 144 / 3051 = 0.0472 degrees.
+    horizontal_fov_deg: [-72.0, 72.0]
+    points_per_line: 3051
+    # List of elevation angles swept by each beam.
+    # The total number of lines in a frame is equal to len(elevation_steps_deg) * num_beams,
+    # since for each elevation step there are num_beams non-overlapping beams scanned simulateneously.
+    elevation_steps_deg: 
+      [-7.8, -7.5, -7.2, -6.9, -3.0 , -2.7, -2.4, -2.1,  1.8,  2.1,  2.4, 2.7,  6.6,  6.9,  7.2,  7.5]

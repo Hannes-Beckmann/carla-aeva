@@ -980,6 +980,31 @@ void UActorBlueprintFunctionLibrary::MakeLidarDefinition(
   StdDevLidar.Id = TEXT("noise_stddev");
   StdDevLidar.Type = EActorAttributeType::Float;
   StdDevLidar.RecommendedValues = { TEXT("0.0") };
+  // Scan pattern absolute file path.
+  FActorVariation PatternFilePath;
+  PatternFilePath.Id = TEXT("pattern_file");
+  PatternFilePath.Type = EActorAttributeType::String;
+  PatternFilePath.RecommendedValues = { TEXT("Absolute path to scan pattern yaml file") };
+  // Scan pattern name.
+  FActorVariation PatternName;
+  PatternName.Id = TEXT("pattern_name");
+  PatternName.Type = EActorAttributeType::String;
+  PatternName.RecommendedValues = { TEXT("Name of scan pattern") };
+  // Whether to motion compensate the doppler velocity with ego-vehicle velocity.
+  FActorVariation MotionCompensate;
+  MotionCompensate.Id = TEXT("motion_compensate");
+  MotionCompensate.Type = EActorAttributeType::Bool;
+  MotionCompensate.RecommendedValues = { TEXT("false") };
+  // Raycast mode. See RaycastMode in FMCWLidarPattern.h.
+  FActorVariation RaycastMode;
+  RaycastMode.Id = TEXT("raycast_mode");
+  RaycastMode.Type = EActorAttributeType::Int;
+  RaycastMode.RecommendedValues = { TEXT("0") };
+  /// Offset the elevation for all raycast points in the scan pattern.
+  FActorVariation ElevationOffset;
+  ElevationOffset.Id = TEXT("elevation_offset");
+  ElevationOffset.Type = EActorAttributeType::Float;
+  ElevationOffset.RecommendedValues = { TEXT("0.0") };
 
   if (Id == "ray_cast") {
     Definition.Variations.Append({
@@ -1006,6 +1031,21 @@ void UActorBlueprintFunctionLibrary::MakeLidarDefinition(
       UpperFOV,
       LowerFOV,
       HorizontalFOV});
+  }
+  else if (Id == "fmcw") {
+    Definition.Variations.Append({
+      Channels,
+      Range,
+      AtmospAttenRate,
+      DropOffGenRate,
+      DropOffIntensityLimit,
+      DropOffAtZeroIntensity,
+      StdDevLidar,
+      PatternFilePath,
+      PatternName,
+      MotionCompensate,
+      RaycastMode,
+      ElevationOffset});
   }
   else {
     DEBUG_ASSERT(false);
@@ -1674,6 +1714,16 @@ void UActorBlueprintFunctionLibrary::SetLidar(
       RetrieveActorAttributeToFloat("dropoff_zero_intensity", Description.Variations, Lidar.DropOffAtZeroIntensity);
   Lidar.NoiseStdDev =
       RetrieveActorAttributeToFloat("noise_stddev", Description.Variations, Lidar.NoiseStdDev);
+  Lidar.PatternFilePath =
+      RetrieveActorAttributeToString("pattern_file", Description.Variations, Lidar.PatternFilePath);
+  Lidar.PatternName =
+      RetrieveActorAttributeToString("pattern_name", Description.Variations, Lidar.PatternName);
+  Lidar.MotionCompensate =
+      RetrieveActorAttributeToBool("motion_compensate", Description.Variations, Lidar.MotionCompensate);
+  Lidar.RaycastMode =
+      RetrieveActorAttributeToInt("raycast_mode", Description.Variations, Lidar.RaycastMode);
+  Lidar.ElevationOffset =
+      RetrieveActorAttributeToFloat("elevation_offset", Description.Variations, Lidar.ElevationOffset);
 }
 
 void UActorBlueprintFunctionLibrary::SetGnss(

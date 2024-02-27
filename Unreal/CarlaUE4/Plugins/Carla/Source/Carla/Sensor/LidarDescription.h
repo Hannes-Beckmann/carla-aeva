@@ -69,4 +69,24 @@ struct CARLA_API FLidarDescription
 
   UPROPERTY(EditAnywhere)
   float NoiseStdDev = 0.0f;
+
+  /// Scan pattern name.
+  UPROPERTY(EditAnywhere)
+  FString PatternName = "";
+
+  /// Scan pattern config yaml absolute file path.
+  UPROPERTY(EditAnywhere)
+  FString PatternFilePath = "";
+
+  /// Whether to motion compensate the Doppler velocity with ego-vehicle velocity.
+  UPROPERTY(EditAnywhere)
+  bool MotionCompensate = false;
+
+  /// Whether to subdivide the raycasting to model rolling shutter effect.
+  UPROPERTY(EditAnywhere)
+  int RaycastMode = 0;
+
+  /// Elevation offset in degrees for all points in the scan pattern.
+  UPROPERTY(EditAnywhere)
+  float ElevationOffset = 0.0f;
 };

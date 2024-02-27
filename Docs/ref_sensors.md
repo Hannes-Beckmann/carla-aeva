@@ -6,6 +6,7 @@
 - [__IMU sensor__](#imu-sensor)
 - [__Lane invasion detector__](#lane-invasion-detector)
 - [__LIDAR sensor__](#lidar-sensor)
+- [__FMCW LIDAR sensor__](#fmcw-lidar-sensor)
 - [__Obstacle detector__](#obstacle-detector)
 - [__Radar sensor__](#radar-sensor)
 - [__RGB camera__](#rgb-camera)
@@ -289,6 +290,114 @@ The rotation of the LIDAR can be tuned to cover a specific angle on every simula
 | `get_point_count(channel)`       | int   | Number of points per channel captured this frame.  |
 | `raw_data`         | bytes | Array of 32-bits floats (XYZI of each point).      |
 
+
+<br>
+
+## FMCW LIDAR sensor
+
+* __Blueprint:__ sensor.lidar.fmcw
+* __Output:__ [carla.FMCWLidarMeasurement](python_api.md#carla.LidarMeasurement) per step (unless `sensor_tick` says otherwise).
+
+This sensor is a variation of the rotating LIDAR sensor above with the following key changes: 
+
+### Velocity
+The information of the LIDAR measurement is additionally encoded with **velocity**:
+It is a scalar value that is measured as the **target's velocity in the radial direction** to the sensor.  
+
+* A target "orbiting" the sensor with speed `S` has zero velocity since there is no radial component.  
+* A target heading directly away/toward the sensor will have velocity `+/-S` since there is only the radial component.  
+* A target heading in any other direction has velocity between `-S` and `+S` depending on the radial component.  
+  
+![LidarPointCloud](img/doppler_radial.gif)  
+
+By default, velocity is measured with respect to the sensor. When the sensor itself is moving at a velocity `S`, stationary points ahead have relative velocity of `-S` and those behind have `+S`. This is due to the [**doppler effect**](https://en.wikipedia.org/wiki/Doppler_effect).  
+
+![LidarPointCloud](img/doppler_doppler.png)
+
+To determine the target's velocity with respect to the world, the measured velocity can be **compensated by the sensor's own ego-velocity**. This compensation can be enabled with the `motion_compensate` blueprint. Note this does not fix geometric distortions caused by rolling shutter effect.
+
+**Motion compensated**
+
+![LidarPointCloud](img/doppler_lidar_motion_compensated.gif)
+
+**Motion uncompensated**
+
+![LidarPointCloud](img/doppler_lidar_motion_uncompensated.gif)
+
+### Raycasting modes
+
+As an additional feature, this LIDAR provides the ability to raycast subsections of the frame at each simulation timestep. Real rotating lidars accumulate points as the laser(s) traverse the frame and experience [**rolling shutter effect**](https://en.wikipedia.org/wiki/Rolling_shutter). In order keep the framerate consistent, the timestep should be divided by the ratio of the portion of the frame being raycast. Additionally, points may need to be accumulated to construct full frames (user implementated).
+
+Raycasting mode can be set with the `raycast_mode` blueprint:  
+
+* **RAYCAST_PER_FRAME**: The entire scan pattern is captured each timestep. Timestep should equal frame period.  
+  
+* **RAYCAST_PER_LINE**: One line is captured each timestep. Timestep should equal frame period / number of lines.  
+
+![LidarPointCloud](img/doppler_lidar_raycast_by_line.gif)  
+
+* **RAYCAST_PER_POINT**: One point is captured each timestep. Since the number of points captured each timestep is a multiple of the number of threads, timestep should equal frame period / (number of points / number of threads).  
+
+![LidarPointCloud](img/doppler_lidar_raycast_by_point.gif)  
+
+Note you can see the simulataneous scanning of the **32 channels** from each of **4 beams** of this scan pattern.
+
+
+
+
+### Scan Pattern
+
+As opposed to the original LIDAR implementation, the rays that are cast each frame (i.e. scan pattern) are made more configurable through a **scan pattern YAML** file. This file defines the number of lasers, their elevation offsets, and a list of parameters for each available scan pattern. This is configured with the blueprints `pattern_file` and `pattern_name`. See the comments in the [default scan pattern file](../ScanPatterns.yaml).
+ 
+### Other notes
+
+* In contrast to the original LIDAR implementation, **beam** refers to the number of **lasers** in the sensor while **channels** refers to the **number of points each beam (laser) raycasts simultaneously**.
+* Other characterstics of this lidar are the same as the original raycast implementation above, including intensity, dropoff and noise. 
+
+
+**To see this lidar in action and how to consume the data try the `open3d_fmcw_lidar.py` example.**
+
+
+#### Lidar attributes
+
+Attributes are shared with the standard raycast lidar above, with differences in bold. 
+
+
+| Blueprint attribute  | Type   | Default    | Description     |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `channels`         | int    | 32     | __Number of raycast threads per laser.__  |
+| `range`            | float  | 10.0  | Maximum distance to measure/raycast in meters.  |
+| `points_per_second` | int    | 56000  | __Ignored__. Replaced by scan pattern YAML.    |
+| `rotation_frequency`            | float  | 10.0  | __Ignored__. Replaced by scan pattern YAML.       |
+| `upper_fov`        | float  | 10.0  | __Ignored__. Replaced by scan pattern YAML.        |
+| `lower_fov`        | float  | -30.0 | __Ignored__. Replaced by scan pattern YAML.         |
+| `horizontal_fov`   | float | 360.0 | __Ignored__. Replaced by scan pattern YAML. |
+| `atmosphere_attenuation_rate`     | float  | 0.004 | Coefficient that measures the LIDAR instensity loss per meter. Check the intensity computation above. |
+| `dropoff_general_rate`          | float  | 0.45  | General proportion of points that are randomy dropped.    |
+| `dropoff_intensity_limit`       | float  | 0.8   | For the intensity based drop-off, the threshold intensity value above which no points are dropped.    |
+| `dropoff_zero_intensity`        | float  | 0.4   | For the intensity based drop-off, the probability of each point with zero intensity being dropped.    |
+| `sensor_tick`      | float  | 0.0   | Simulation seconds between sensor captures (ticks). |
+| `noise_stddev`     | float  | 0.0   | Standard deviation of the noise model to disturb each point along the vector of its raycast. |
+| `pattern_file`     | str  |     | __New__. Path to scan pattern YAML file. |
+| `pattern_name`     | str  |     | __New__. Name of active scan pattern. |
+| `motion_compensate`     | bool  | false   | __New__. Whether to motion compensate the doppler velocity with ego-vehicle velocity. |
+| `raycast_mode`     | int  | 0   | __New__. Sets what should be raycast on every simulation delta step. Enables modelling of rolling shutter effect. Raycast modes: 0 (by frame), 1 (by line), 2 (by point). |
+
+
+
+#### Output attributes
+
+| Sensor data attribute            | Type  | Description        |
+| ----------------------- | ----------------------- | ----------------------- |
+| `frame`            | int   | Frame number when the measurement took place.      |
+| `timestamp`        | double | Simulation time of the measurement in seconds since the beginning of the episode.        |
+| `transform`        | [carla.Transform](<../python_api#carlatransform>)  | Location and rotation in world coordinates of the sensor at the time of the measurement. |
+| `horizontal_angle`   | float | Angle (radians) in the XY plane of the LIDAR in the current frame.           |
+| `channels`         | int   | Number of raycast threads for each beam.    |
+| `beams`         | int   | Number of beams (lasers) of the LIDAR.    |
+| `get_point_count_channel`       | int   | Number of points per channel captured this frame.  |
+| `get_point_count_beam`       | int   | Number of points per beam captured this frame.  |
+| `raw_data`         | bytes | Array of data for each point.      |
 
 <br>
 

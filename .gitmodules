@@ -1,0 +1,3 @@
+[submodule "Unreal/CarlaUE4/Plugins/UnrealYAML"]
+	path = Unreal/CarlaUE4/Plugins/UnrealYAML
+	url = https://github.com/jwindgassen/UnrealYAML
